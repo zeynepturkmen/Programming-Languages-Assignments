@@ -1,0 +1,78 @@
+%{
+int line = 1;
+int nested = 0;
+int incrementer(char *input){  
+  while(strstr(input, "\n")!=NULL){
+  line++;
+  input = strstr(input, "\n") + 1;	
+  }
+}
+%}
+tMAIL "Mail"
+tSEND "send"
+tFROM "from"
+tTO "to"
+tSET "set"
+tSCHEDULE "schedule"
+tENDMAIL "end"[ \t\n]+"Mail"
+tENDSCHEDULE "end"[ \t\n]+"schedule"
+tCOMMA ","
+tCOLON ":"
+tLPR "("
+tRPR ")"
+tLBR "["
+tRBR "]"
+tAT "@"
+tIDENT [A-Za-z_][A-Za-z0-9_]*
+tSTRING ["][^"]*["]
+tADDRESS ([A-Za-z0-9_-]([.]{0,1}[A-Za-z0-9_-])*[@](([A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])|[A-Za-z0-9])([.]((([A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))|[A-Za-z0-9])){1,2})
+tDATE ([0-9]{2}[/][0-9]{2}[/][0-9]{4}|[0-9]{2}[.][0-9]{2}[.][0-9]{4}|[0-9]{2}[-][0-9]{2}[-][0-9]{4})
+tTIME [0-9]{2}[:][0-9]{2}
+
+%x singlecomment
+%x multicomment
+%%
+"//" BEGIN(singlecomment);
+"/*" BEGIN(multicomment);
+<multicomment>"/*" nested++;
+<multicomment>"*/" { 
+		     if(nested == 0){
+		      BEGIN(INITIAL);
+		     }else{
+		      nested --;
+		     }
+                   }
+<multicomment>\n line++;
+<multicomment>. ;
+<multicomment><<EOF>> return;
+<singlecomment>\n {line++; BEGIN(INITIAL);}
+<singlecomment><<EOF>> return;
+<singlecomment>. ; 
+{tMAIL} printf("%d_tMAIL\n", line);
+{tTO} printf("%d_tTO\n", line);
+{tSEND} printf("%d_tSEND\n", line);
+{tFROM} printf("%d_tFROM\n", line);
+{tSET} printf("%d_tSET\n", line);
+{tSCHEDULE} printf("%d_tSCHEDULE\n", line);
+{tENDMAIL} printf("%d_tENDMAIL\n", line); incrementer(yytext);
+{tENDSCHEDULE} printf("%d_tENDSCHEDULE\n", line); incrementer(yytext);
+{tCOMMA} printf("%d_tCOMMA\n", line);
+{tCOLON} printf("%d_tCOLON\n", line);
+{tLPR} printf("%d_tLPR\n", line);
+{tRPR} printf("%d_tRPR\n", line);
+{tLBR} printf("%d_tLBR\n", line);
+{tRBR} printf("%d_tRBR\n", line);
+{tAT} printf("%d_tAT\n", line);
+{tIDENT} printf("%d_tIDENT_(%s)\n", line, yytext);
+{tSTRING} printf("%d_tSTRING_(%.*s)\n", line, (strlen(yytext)-2), yytext+1); incrementer(yytext);
+{tDATE} printf("%d_tDATE_(Day_%.*s_Month_%.*s_Year_%.*s)\n", line, 2, yytext, 2, yytext+3, 4, yytext+6);
+{tTIME} printf("%d_tTIME_(Hour_%.*s_Minute_%.*s)\n", line, 2, yytext, 2, yytext+3);
+{tADDRESS} printf("%d_tADDRESS_(%s)\n", line, yytext);
+\n line++;
+[\t ] ;
+<<EOF>> return;
+. printf("%d_ILLEGAL_CHARACTER_(%s)\n", line, yytext);
+%%
+main(){
+	yylex();
+}
